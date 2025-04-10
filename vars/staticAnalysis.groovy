@@ -1,19 +1,19 @@
 def call(boolean abort = false) {
+  withSonarQubeEnv('Sonar local') {
+    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+      sh '''
+        sonar-scanner \
+          -Dsonar.projectKey=devops-sonar \
+          -Dsonar.sources=. \
+          -Dsonar.token=$SONAR_TOKEN
+      '''
+    }
+  }
+
   def branch = env.BRANCH_NAME?.toLowerCase()
   def shouldCheckGate = abort || branch == 'master' || branch?.startsWith('hotfix')
 
   if (shouldCheckGate) {
-    withSonarQubeEnv('Sonar local') {
-      withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-        sh '''
-          sonar-scanner \
-            -Dsonar.projectKey=devops-sonar \
-            -Dsonar.sources=. \
-            -Dsonar.token=$SONAR_TOKEN
-        '''
-      }
-    }
-
     timeout(time: 5, unit: 'MINUTES') {
       def qg = waitForQualityGate()
       echo "Evaluating Quality Gate for branch: ${branch} (abort flag: ${abort})"
@@ -28,6 +28,6 @@ def call(boolean abort = false) {
       }
     }
   } else {
-    echo "Skipping Sonar analysis and Quality Gate check — branch '${branch}' is non-critical and abort=false."
+    echo "Skipping Quality Gate check — branch '${branch}' is non-critical and abort=false."
   }
 }
